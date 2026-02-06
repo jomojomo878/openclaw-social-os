@@ -1,0 +1,16 @@
+node_modules/
+*.log
+.DS_Store
+.env
+
+# Runtime data (generated)
+baseline.json
+nodes.json
+edges.json
+posts.json
+metadata.json
+needs-*.json
+storage/
+
+# Keep example files
+!sample-import.json

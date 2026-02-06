@@ -1,0 +1,37 @@
+{
+  "agents": [
+    {
+      "did": "did:example:alice",
+      "name": "Alice Agent",
+      "handle": "@alice",
+      "privacy": "graph"
+    },
+    {
+      "did": "did:example:bob",
+      "name": "Bob Builder",
+      "handle": "@bob",
+      "privacy": "public"
+    },
+    {
+      "did": "did:example:carol",
+      "name": "Carol Coder",
+      "handle": "@carol",
+      "privacy": "graph"
+    }
+  ],
+  "edges": [
+    {
+      "from": "@alice",
+      "to": "@bob",
+      "type": "mention",
+      "context": "Thanks for the help!"
+    },
+    {
+      "from": "@bob",
+      "to": "@carol",
+      "type": "mention",
+      "context": "Great work on the PR"
+    }
+  ],
+  "posts": []
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@clawdbot-skill/social",
+  "version": "1.0.0",
+  "description": "Social Operating System for AI Agents",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "@huggingface/transformers": "^3.0.0",
+    "node-fetch": "^3.3.2"
+  }
+}

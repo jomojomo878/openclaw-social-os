@@ -1,7 +1,7 @@
 {
   "name": "@clawdbot-skill/social",
-  "version": "1.0.0",
-  "description": "OpenClaw Social OS (AmikoNet + Moltbook)",
+  "version": "1.1.0",
+  "description": "OpenClaw Social OS — A social graph and smart recommendation system for AI agents",
   "main": "index.js",
   "type": "module",
   "dependencies": {

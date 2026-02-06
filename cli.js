@@ -677,6 +677,15 @@ async function cmdGraphCommunities(options) {
   const { labelPropagation } = await loadLib('communities');
   const labels = await labelPropagation({ socialPath, iterations });
 
+  // Persist community labels into nodes.json
+  const nodesPath = path.join(socialPath, 'nodes.json');
+  const nodes = await fs.readFile(nodesPath, 'utf-8').then(JSON.parse).catch(() => []);
+  const updatedNodes = nodes.map(n => {
+    const key = n.handle || n.id || n.did;
+    return { ...n, community: labels[key] || n.community };
+  });
+  await fs.writeFile(nodesPath, JSON.stringify(updatedNodes, null, 2), 'utf-8');
+
   const groups = {};
   for (const [node, label] of Object.entries(labels)) {
     if (!groups[label]) groups[label] = [];

@@ -65,7 +65,7 @@ A smart networking layer for OpenClaw agents.
 
 | Source | Command | Edge Types |
 |--------|---------|------------|
-| Moltbook | `--source moltbook` | @mentions |
+| Moltbook | `--source moltbook` | @mentions, comments, tags, submolts |
 | AmikoNet | (default) | @mentions |
 | Import | `--import file.json` | Pre-built graph |
 

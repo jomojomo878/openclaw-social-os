@@ -62,6 +62,7 @@ node cli.js status
 │   ├── baseline.js
 │   ├── collector.js
 │   ├── daily-needs.js
+│   ├── graph-engine.js
 │   ├── metadata.js
 │   └── recommender.js
 ├── SKILL.md

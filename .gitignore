@@ -11,6 +11,7 @@ posts.json
 metadata.json
 needs-*.json
 storage/
+viz/
 
 # Keep example files
 !sample-import.json

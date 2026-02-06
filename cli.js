@@ -321,21 +321,73 @@ function generateGraphHTML(nodes, edges) {
     .node text { font-size: 10px; fill: #e0e0e0; pointer-events: none; }
     .link { stroke: #444; stroke-opacity: 0.6; }
     .tooltip { position: absolute; padding: 8px 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 4px; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
+    .panel { position: absolute; top: 12px; left: 12px; background: rgba(20,20,20,0.9); border: 1px solid #333; border-radius: 8px; padding: 12px; width: 280px; }
+    .panel h3 { margin: 0 0 8px 0; font-size: 14px; }
+    .panel label { display: block; font-size: 12px; margin-top: 8px; }
+    .panel input[type="text"] { width: 100%; padding: 6px; background: #101010; color: #e0e0e0; border: 1px solid #333; border-radius: 4px; }
+    .panel input[type="range"] { width: 100%; }
+    .legend { margin-top: 10px; font-size: 12px; }
+    .legend span { display: inline-block; margin-right: 8px; }
+    .btn { margin-top: 10px; padding: 6px 10px; background: #1f6feb; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
   </style>
 </head>
 <body>
+  <div class="panel">
+    <h3>Graph Controls</h3>
+    <label>Search node</label>
+    <input id="search" type="text" placeholder="Type handle or id" />
+
+    <label>Min connections: <span id="minDegreeVal">0</span></label>
+    <input id="minDegree" type="range" min="0" max="10" value="0" />
+
+    <label><input id="showTags" type="checkbox" checked /> Show tags</label>
+    <label><input id="showSubmolts" type="checkbox" checked /> Show submolts</label>
+
+    <label>Edge types</label>
+    <label><input class="edgeType" type="checkbox" value="mention" checked /> Mentions</label>
+    <label><input class="edgeType" type="checkbox" value="comment" checked /> Comments</label>
+    <label><input class="edgeType" type="checkbox" value="tag" checked /> Tags</label>
+    <label><input class="edgeType" type="checkbox" value="submolt" checked /> Submolts</label>
+
+    <button id="exportPng" class="btn">Export PNG</button>
+
+    <div class="legend">
+      <div>Legend:</div>
+      <span>● Agent</span>
+      <span>■ Tag</span>
+      <span>◆ Submolt</span>
+    </div>
+  </div>
   <div id="graph"></div>
   <div id="tooltip" class="tooltip"></div>
 
   <script>
     const nodes = ${JSON.stringify(nodes)};
-    const links = ${JSON.stringify(edges.map(e => ({
-      source: e.from,
-      target: e.to
-    })))};
+    const rawEdges = ${JSON.stringify(edges)};
+
+    const typeColor = {
+      agent: "#4dabf7",
+      tag: "#ffd43b",
+      submolt: "#ff6b6b"
+    };
+
+    const getNodeType = (n) => {
+      const id = n.id || n.handle || "";
+      if (id.startsWith("#tag:")) return "tag";
+      if (id.startsWith("#submolt:")) return "submolt";
+      return "agent";
+    };
+
+    function buildLinks(selectedTypes) {
+      return rawEdges
+        .filter(e => selectedTypes.has(e.type || "mention"))
+        .map(e => ({ source: e.from, target: e.to, type: e.type || "mention" }));
+    }
 
     const width = window.innerWidth;
     const height = window.innerHeight;
+
+    let links = buildLinks(new Set(["mention","comment","tag","submolt"]));
 
     const simulation = d3.forceSimulation(nodes)
       .force("link", d3.forceLink(links).id(d => d.id || d.handle).distance(100))
@@ -365,7 +417,10 @@ function generateGraphHTML(nodes, edges) {
 
     node.append("circle")
       .attr("r", 15)
-      .attr("fill", d => d.id === "${process.env.AGENT_DID?.substring(0, 20) || 'you'}" ? "#ff6b6b" : "#4dabf7");
+      .attr("fill", d => {
+        const t = getNodeType(d);
+        return typeColor[t] || "#4dabf7";
+      });
 
     node.append("text")
       .attr("x", 20)
@@ -411,6 +466,98 @@ function generateGraphHTML(nodes, edges) {
     }).on("mouseout", () => {
       tooltip.style("opacity", 0);
     });
+
+    // Controls
+    const minDegreeInput = document.getElementById("minDegree");
+    const minDegreeVal = document.getElementById("minDegreeVal");
+    const searchInput = document.getElementById("search");
+    const showTags = document.getElementById("showTags");
+    const showSubmolts = document.getElementById("showSubmolts");
+    const edgeTypeInputs = Array.from(document.querySelectorAll(".edgeType"));
+
+    const degreeMap = {};
+    function computeDegrees() {
+      nodes.forEach(n => { degreeMap[n.id || n.handle] = 0; });
+      links.forEach(l => {
+        const s = l.source.id || l.source.handle || l.source;
+        const t = l.target.id || l.target.handle || l.target;
+        degreeMap[s] = (degreeMap[s] || 0) + 1;
+        degreeMap[t] = (degreeMap[t] || 0) + 1;
+      });
+    }
+
+    function refreshLinks() {
+      const selectedTypes = new Set(edgeTypeInputs.filter(i => i.checked).map(i => i.value));
+      links = buildLinks(selectedTypes);
+      computeDegrees();
+
+      link.data(links, d => d.source + "-" + d.target).join(
+        enter => enter.append("line").attr("class", "link"),
+        update => update,
+        exit => exit.remove()
+      );
+
+      simulation.force("link", d3.forceLink(links).id(d => d.id || d.handle).distance(100));
+      simulation.alpha(0.5).restart();
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const minDegree = parseInt(minDegreeInput.value, 10);
+      minDegreeVal.textContent = minDegree;
+      const query = searchInput.value.trim().toLowerCase();
+
+      node.style("display", d => {
+        const t = getNodeType(d);
+        if (t === "tag" && !showTags.checked) return "none";
+        if (t === "submolt" && !showSubmolts.checked) return "none";
+        const key = d.id || d.handle;
+        if ((degreeMap[key] || 0) < minDegree) return "none";
+        if (query && !(String(d.name || d.handle || "").toLowerCase().includes(query))) return "none";
+        return "block";
+      });
+
+      link.style("display", l => {
+        const s = l.source.id || l.source.handle || l.source;
+        const t = l.target.id || l.target.handle || l.target;
+        if ((degreeMap[s] || 0) < minDegree) return "none";
+        if ((degreeMap[t] || 0) < minDegree) return "none";
+        return "block";
+      });
+    }
+
+    minDegreeInput.addEventListener("input", applyFilters);
+    searchInput.addEventListener("input", applyFilters);
+    showTags.addEventListener("change", applyFilters);
+    showSubmolts.addEventListener("change", applyFilters);
+    edgeTypeInputs.forEach(i => i.addEventListener("change", refreshLinks));
+
+    // Export PNG
+    document.getElementById("exportPng").addEventListener("click", () => {
+      const serializer = new XMLSerializer();
+      const svgNode = svg.node();
+      const svgString = serializer.serializeToString(svgNode);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+      const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        const pngUrl = canvas.toDataURL("image/png");
+        const a = document.createElement("a");
+        a.href = pngUrl;
+        a.download = "graph.png";
+        a.click();
+      };
+      img.src = url;
+    });
+
+    computeDegrees();
+    applyFilters();
 
     window.addEventListener("resize", () => {
       svg.attr("width", window.innerWidth).attr("height", window.innerHeight);

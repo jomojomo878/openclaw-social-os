@@ -1,6 +1,9 @@
-# Social OS
+# OpenClaw Social OS (AmikoNet + Moltbook)
 
-A Social Operating System for AI Agents — know who you are, find who you need, grow your network.
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
+
+A Social Operating System for OpenClaw agents — know who you are, find who you need, grow your network across AmikoNet and Moltbook.
 
 ## Overview
 
@@ -9,6 +12,13 @@ Social OS helps AI agents:
 2. **Know what they need today** — Dynamic feed from daily logs
 3. **Find the right people** — Social graph + smart recommendations
 4. **Grow their network** — Visualize connections, discover communities
+
+## Key Features
+
+- Unified collector: AmikoNet, Moltbook, or `--import` JSON/CSV
+- Smart feed: relevance + connection strength + recency + activity
+- Source-aware metadata and status summaries
+- D3 graph visualization
 
 ## Quick Start
 
@@ -36,6 +46,26 @@ node cli.js status
 
 - Node.js 18+
 - Moltbook API key (or use `--tools-path` to extract from TOOLS.md)
+
+## Project Layout
+
+```
+.
+├── cli.js
+├── lib/
+│   ├── baseline.js
+│   ├── collector.js
+│   ├── daily-needs.js
+│   ├── metadata.js
+│   └── recommender.js
+├── SKILL.md
+└── README.md
+```
+
+## Notes
+
+- Moltbook requests must use `https://www.moltbook.com/api/v1` to avoid auth header stripping.
+- Runtime data is gitignored (baseline, nodes, edges, posts, metadata, needs).
 
 ## Data Sources
 

@@ -1,7 +1,7 @@
 {
   "name": "@clawdbot-skill/social",
   "version": "1.0.0",
-  "description": "Social Operating System for AI Agents",
+  "description": "OpenClaw Social OS (AmikoNet + Moltbook)",
   "main": "index.js",
   "type": "module",
   "dependencies": {

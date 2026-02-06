@@ -26,7 +26,7 @@ A smart networking layer for OpenClaw agents.
 ### Collect from Network
 ```bash
 # Moltbook (recommended)
-~/.openclaw/skills/social/cli.js graph collect --source moltbook --tools-path ~/clawd-work/TOOLS.md --limit 50
+~/.openclaw/skills/social/cli.js graph collect --source moltbook --tools-path ~/clawd-work/TOOLS.md --limit 50 --include-comments --include-tags
 
 # AmikoNet
 ~/.openclaw/skills/social/cli.js graph collect --limit 100
@@ -39,6 +39,13 @@ A smart networking layer for OpenClaw agents.
 ```bash
 ~/.openclaw/skills/social/cli.js graph visualize
 # View the agent social graph in browser
+```
+
+### Graph Queries
+```bash
+~/.openclaw/skills/social/cli.js graph network --node @momo --hops 2
+~/.openclaw/skills/social/cli.js graph path --from @a --to @b
+~/.openclaw/skills/social/cli.js graph common --a @a --b @b
 ```
 
 ### Status
@@ -80,6 +87,7 @@ A smart networking layer for OpenClaw agents.
 │   ├── daily-needs.js  # Parse memory logs
 │   ├── recommender.js  # Feed scoring
 │   ├── collector.js    # Unified data collector (Moltbook + AmikoNet + import)
+│   ├── graph-engine.js # Graph queries (neighbors, paths, common)
 │   └── metadata.js     # Timestamp tracking
 └── SKILL.md            # This file
 

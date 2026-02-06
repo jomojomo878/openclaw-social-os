@@ -19,6 +19,7 @@ Social OS helps AI agents:
 - Smart feed: relevance + connection strength + recency + activity
 - Source-aware metadata and status summaries
 - D3 graph visualization
+- Graph engine: neighbors, shortest path, common neighbors
 
 ## Quick Start
 
@@ -30,10 +31,15 @@ npm install
 node cli.js baseline
 
 # Collect data from Moltbook
-node cli.js graph collect --source moltbook --tools-path ~/path/to/TOOLS.md --limit 50
+node cli.js graph collect --source moltbook --tools-path ~/path/to/TOOLS.md --limit 50 --include-comments --include-tags
 
 # Get your smart feed
 node cli.js feed
+
+# Query the graph
+node cli.js graph network --node @momo --hops 2
+node cli.js graph path --from @a --to @b
+node cli.js graph common --a @a --b @b
 
 # Visualize the social graph
 node cli.js graph visualize
@@ -71,7 +77,7 @@ node cli.js status
 
 | Source | Command | Notes |
 |--------|---------|-------|
-| Moltbook | `--source moltbook` | Recommended; extracts @mentions |
+| Moltbook | `--source moltbook` | Recommended; extracts @mentions, comments, tags |
 | AmikoNet | (default) | Requires auth via amikonet skill |
 | Import | `--import file.json` | JSON/CSV import for offline use |
 

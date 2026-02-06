@@ -139,7 +139,11 @@ async function cmdGraphCollect(options) {
         limit: options.limit,
         sort: options.sort,
         submolt: options.submolt,
-        baseUrl: options.baseUrl
+        baseUrl: options.baseUrl,
+        includeComments: options.includeComments,
+        commentsLimit: options.commentsLimit,
+        includeSubmolts: options.includeSubmolts,
+        includeTags: options.includeTags
       });
       await saveGraphData(result.posts, result.nodes, result.edges, socialPath);
     } else {
@@ -419,6 +423,76 @@ function generateGraphHTML(nodes, edges) {
 }
 
 /**
+ * Graph query: network neighbors (k-hop)
+ */
+async function cmdGraphNetwork(options) {
+  const socialPath = options.socialPath || DEFAULT_SOCIAL_PATH;
+  const node = options.node;
+  const hops = options.hops ? parseInt(options.hops, 10) : 1;
+
+  if (!node) {
+    console.error('❌ Missing --node. Example: social graph network --node @momo --hops 2');
+    return { success: false };
+  }
+
+  const { getNeighbors } = await loadLib('graph-engine');
+  const result = await getNeighbors({ socialPath, node, hops });
+
+  console.error(`✅ Network for ${result.startKey} (${hops}-hop)`);
+  console.error(`   Nodes: ${result.nodes.length}, Edges: ${result.edges.length}`);
+  return { success: true, ...result };
+}
+
+/**
+ * Graph query: shortest path
+ */
+async function cmdGraphPath(options) {
+  const socialPath = options.socialPath || DEFAULT_SOCIAL_PATH;
+  const from = options.from;
+  const to = options.to;
+
+  if (!from || !to) {
+    console.error('❌ Missing --from or --to. Example: social graph path --from @a --to @b');
+    return { success: false };
+  }
+
+  const { shortestPath } = await loadLib('graph-engine');
+  const result = await shortestPath({ socialPath, from, to });
+
+  if (!result.path.length) {
+    console.error(`⚠️  No path found between ${result.fromKey} and ${result.toKey}`);
+    return { success: true, ...result };
+  }
+
+  console.error(`✅ Path (${result.path.length - 1} hops): ${result.path.join(' -> ')}`);
+  return { success: true, ...result };
+}
+
+/**
+ * Graph query: common neighbors
+ */
+async function cmdGraphCommon(options) {
+  const socialPath = options.socialPath || DEFAULT_SOCIAL_PATH;
+  const a = options.a;
+  const b = options.b;
+
+  if (!a || !b) {
+    console.error('❌ Missing --a or --b. Example: social graph common --a @a --b @b');
+    return { success: false };
+  }
+
+  const { commonNeighbors } = await loadLib('graph-engine');
+  const result = await commonNeighbors({ socialPath, a, b });
+
+  console.error(`✅ Common neighbors (${result.common.length}):`);
+  if (result.common.length) {
+    console.error(`   ${result.common.join(', ')}`);
+  }
+
+  return { success: true, ...result };
+}
+
+/**
  * Show status
  */
 async function cmdStatus(options) {
@@ -477,6 +551,9 @@ Commands:
   baseline              Generate your baseline profile
   feed                  Get your smart feed
   graph collect         Collect data from network (default: amikonet)
+  graph network         Show k-hop network around a node
+  graph path            Show shortest path between two nodes
+  graph common          Show common neighbors between two nodes
   graph visualize       View the social graph
   status                Show current status with metadata
 
@@ -490,6 +567,10 @@ Options:
   --limit <n>           Limit results (for collect)
   --sort <sort>         Sort order: new | top (for moltbook)
   --submolt <name>      Filter by submolt (for moltbook)
+  --include-comments    Include comment edges (moltbook)
+  --comments-limit <n>  Max comments per post (moltbook)
+  --include-submolts    Include submolt edges (moltbook)
+  --include-tags        Include hashtag edges (moltbook)
 
   --import <path>       Import graph data from JSON/CSV file
   --api-key <key>       API key (for moltbook)
@@ -520,6 +601,9 @@ Examples:
 
   # Visualization
   social graph visualize
+  social graph network --node @momo --hops 2
+  social graph path --from @a --to @b
+  social graph common --a @a --b @b
   social status
 `);
     process.exit(command ? 0 : 1);
@@ -538,6 +622,12 @@ Examples:
         const subCommand = positional[0];
         if (subCommand === 'collect') {
           result = await cmdGraphCollect(options);
+        } else if (subCommand === 'network') {
+          result = await cmdGraphNetwork(options);
+        } else if (subCommand === 'path') {
+          result = await cmdGraphPath(options);
+        } else if (subCommand === 'common') {
+          result = await cmdGraphCommon(options);
         } else if (subCommand === 'visualize' || subCommand === 'viz') {
           result = await cmdGraphVisualize(options);
         } else {

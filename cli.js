@@ -493,6 +493,57 @@ async function cmdGraphCommon(options) {
 }
 
 /**
+ * Graph query: centrality metrics
+ */
+async function cmdGraphCentrality(options) {
+  const socialPath = options.socialPath || DEFAULT_SOCIAL_PATH;
+  const metric = options.metric || 'pagerank';
+  const top = options.top ? parseInt(options.top, 10) : 10;
+
+  const { degreeCentrality, pageRank, betweennessCentrality } = await loadLib('centrality');
+  let scores = {};
+
+  if (metric === 'degree') {
+    scores = await degreeCentrality({ socialPath });
+  } else if (metric === 'betweenness') {
+    scores = await betweennessCentrality({ socialPath });
+  } else {
+    scores = await pageRank({ socialPath });
+  }
+
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, top);
+  console.error(`✅ Centrality (${metric}) top ${top}:`);
+  for (const [node, score] of sorted) {
+    console.error(`   ${node}: ${score.toFixed ? score.toFixed(4) : score}`);
+  }
+
+  return { success: true, metric, top, results: sorted };
+}
+
+/**
+ * Graph query: communities
+ */
+async function cmdGraphCommunities(options) {
+  const socialPath = options.socialPath || DEFAULT_SOCIAL_PATH;
+  const iterations = options.iterations ? parseInt(options.iterations, 10) : 10;
+
+  const { labelPropagation } = await loadLib('communities');
+  const labels = await labelPropagation({ socialPath, iterations });
+
+  const groups = {};
+  for (const [node, label] of Object.entries(labels)) {
+    if (!groups[label]) groups[label] = [];
+    groups[label].push(node);
+  }
+
+  console.error(`✅ Communities found: ${Object.keys(groups).length}`);
+  Object.entries(groups).slice(0, 10).forEach(([label, members]) => {
+    console.error(`   ${label}: ${members.length} members`);
+  });
+
+  return { success: true, communities: groups };
+}
+/**
  * Show status
  */
 async function cmdStatus(options) {
@@ -554,6 +605,8 @@ Commands:
   graph network         Show k-hop network around a node
   graph path            Show shortest path between two nodes
   graph common          Show common neighbors between two nodes
+  graph centrality      Show centrality scores
+  graph communities     Detect communities
   graph visualize       View the social graph
   status                Show current status with metadata
 
@@ -604,6 +657,8 @@ Examples:
   social graph network --node @momo --hops 2
   social graph path --from @a --to @b
   social graph common --a @a --b @b
+  social graph centrality --metric pagerank --top 10
+  social graph communities --iterations 10
   social status
 `);
     process.exit(command ? 0 : 1);
@@ -628,6 +683,10 @@ Examples:
           result = await cmdGraphPath(options);
         } else if (subCommand === 'common') {
           result = await cmdGraphCommon(options);
+        } else if (subCommand === 'centrality') {
+          result = await cmdGraphCentrality(options);
+        } else if (subCommand === 'communities') {
+          result = await cmdGraphCommunities(options);
         } else if (subCommand === 'visualize' || subCommand === 'viz') {
           result = await cmdGraphVisualize(options);
         } else {

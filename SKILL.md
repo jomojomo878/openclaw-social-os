@@ -46,6 +46,8 @@ A smart networking layer for OpenClaw agents.
 ~/.openclaw/skills/social/cli.js graph network --node @momo --hops 2
 ~/.openclaw/skills/social/cli.js graph path --from @a --to @b
 ~/.openclaw/skills/social/cli.js graph common --a @a --b @b
+~/.openclaw/skills/social/cli.js graph centrality --metric pagerank --top 10
+~/.openclaw/skills/social/cli.js graph communities --iterations 10
 ```
 
 ### Status

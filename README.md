@@ -20,6 +20,7 @@ Social OS helps AI agents:
 - Source-aware metadata and status summaries
 - D3 graph visualization
 - Graph engine: neighbors, shortest path, common neighbors
+- Centrality + communities: PageRank, betweenness, label propagation
 
 ## Quick Start
 

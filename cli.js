@@ -699,6 +699,230 @@ async function cmdGraphCommunities(options) {
 
   return { success: true, communities: groups };
 }
+
+/**
+ * Solana: create wallet-binding challenge
+ */
+async function cmdSolanaChallenge(options) {
+  const socialPath = options.socialPath || DEFAULT_SOCIAL_PATH;
+  const handle = options.handle;
+  const walletAddress = options.wallet;
+  const ttlMinutes = options.ttlMinutes ? parseInt(options.ttlMinutes, 10) : 10;
+
+  if (!handle || !walletAddress) {
+    console.error('❌ Missing --handle or --wallet. Example: social solana challenge --handle @momo --wallet <pubkey>');
+    return { success: false };
+  }
+
+  const { createWalletBindingChallenge } = await loadLib('solana');
+  const challenge = await createWalletBindingChallenge({
+    socialPath,
+    handle,
+    walletAddress,
+    ttlMinutes
+  });
+
+  console.error('✅ Wallet challenge created');
+  console.error(`   Challenge ID: ${challenge.challengeId}`);
+  console.error(`   Expires At: ${challenge.expiresAt}`);
+  console.error('\nSign this exact message with your wallet:');
+  console.error('---');
+  console.error(challenge.message);
+  console.error('---');
+  console.error('\nThen verify with:');
+  console.error(`social solana bind --challenge-id ${challenge.challengeId} --signature <base58-or-base64-signature> --social-path ${socialPath}`);
+
+  return { success: true, challenge };
+}
+
+/**
+ * Solana: verify wallet-binding signature and persist identity binding
+ */
+async function cmdSolanaBind(options) {
+  const socialPath = options.socialPath || DEFAULT_SOCIAL_PATH;
+  const challengeId = options.challengeId;
+  const signature = options.signature;
+
+  if (!challengeId || !signature) {
+    console.error('❌ Missing --challenge-id or --signature');
+    return { success: false };
+  }
+
+  const { verifyWalletBinding } = await loadLib('solana');
+  const result = await verifyWalletBinding({
+    socialPath,
+    challengeId,
+    signature,
+    handle: options.handle,
+    walletAddress: options.wallet
+  });
+
+  console.error('✅ Wallet bound to Social OS identity');
+  console.error(`   Handle: ${result.handle}`);
+  console.error(`   Wallet: ${result.walletAddress}`);
+  console.error(`   Verified At: ${result.walletVerifiedAt}`);
+
+  return { success: true, binding: result };
+}
+
+/**
+ * Solana: record proof-of-interaction with optional tx verification
+ */
+async function cmdSolanaProof(options) {
+  const socialPath = options.socialPath || DEFAULT_SOCIAL_PATH;
+  const from = options.from;
+  const to = options.to;
+  const proofType = options.proofType;
+  const txSignature = options.tx;
+  const verifyTx = options.verifyTx === true || options.verifyTx === 'true';
+  const network = options.network || 'devnet';
+
+  if (!from || !to || !proofType) {
+    console.error('❌ Missing --from, --to, or --proof-type');
+    console.error('   Example: social solana proof --from @a --to @b --proof-type intro_accepted --tx <signature>');
+    return { success: false };
+  }
+
+  let offchainData = options.offchainData || null;
+  if (options.offchainFile) {
+    const raw = await fs.readFile(options.offchainFile, 'utf-8');
+    try {
+      offchainData = JSON.parse(raw);
+    } catch {
+      offchainData = raw;
+    }
+  }
+
+  const { recordInteractionProof } = await loadLib('solana');
+  const result = await recordInteractionProof({
+    socialPath,
+    from,
+    to,
+    proofType,
+    context: options.context || null,
+    offchainData,
+    txSignature,
+    network,
+    rpcUrl: options.rpcUrl,
+    verifyTx
+  });
+
+  console.error('✅ Interaction proof recorded');
+  console.error(`   Proof ID: ${result.proofId}`);
+  console.error(`   Proof Hash: ${result.proofHash}`);
+  if (result.txSignature) {
+    console.error(`   Tx: ${result.txSignature}`);
+  }
+
+  return { success: true, proof: result };
+}
+
+/**
+ * Solana: send SOL reward payment and record settlement
+ */
+async function cmdSolanaPay(options) {
+  const socialPath = options.socialPath || DEFAULT_SOCIAL_PATH;
+  const fromKeypairPath = options.fromKeypair;
+  const toWallet = options.toWallet || options.to;
+  const amount = options.amount;
+  const network = options.network || 'devnet';
+
+  if (!fromKeypairPath || !toWallet || !amount) {
+    console.error('❌ Missing --from-keypair, --to-wallet, or --amount');
+    console.error('   Example: social solana pay --from-keypair ~/.config/solana/id.json --to-wallet <pubkey> --amount 0.1');
+    return { success: false };
+  }
+
+  const { transferSolReward } = await loadLib('solana');
+  const result = await transferSolReward({
+    socialPath,
+    fromKeypairPath,
+    toWallet,
+    amountSol: Number(amount),
+    network,
+    rpcUrl: options.rpcUrl,
+    memo: options.memo,
+    fromHandle: options.fromHandle,
+    toHandle: options.toHandle
+  });
+
+  console.error('✅ SOL reward transferred and recorded');
+  console.error(`   Tx: ${result.txSignature}`);
+  console.error(`   Amount: ${result.amount} ${result.asset}`);
+
+  return { success: true, payment: result };
+}
+
+/**
+ * Solana: record external reward settlement (SOL/USDC/etc) using existing tx
+ */
+async function cmdSolanaReward(options) {
+  const socialPath = options.socialPath || DEFAULT_SOCIAL_PATH;
+  const txSignature = options.tx;
+  const toWallet = options.toWallet || options.to;
+  const amount = options.amount;
+  const asset = options.asset || 'USDC';
+  const network = options.network || 'devnet';
+  const verifyTx = options.verifyTx === true || options.verifyTx === 'true';
+
+  if (!txSignature || !toWallet || !amount) {
+    console.error('❌ Missing --tx, --to-wallet, or --amount');
+    console.error('   Example: social solana reward --tx <signature> --to-wallet <pubkey> --amount 20 --asset USDC');
+    return { success: false };
+  }
+
+  const { recordRewardPayment } = await loadLib('solana');
+  const result = await recordRewardPayment({
+    socialPath,
+    fromHandle: options.fromHandle,
+    toHandle: options.toHandle,
+    fromWallet: options.fromWallet || null,
+    toWallet,
+    amount: Number(amount),
+    asset,
+    txSignature,
+    network,
+    rpcUrl: options.rpcUrl,
+    note: options.note || 'external reward settlement',
+    verifyTx
+  });
+
+  console.error('✅ Reward settlement recorded');
+  console.error(`   Tx: ${result.txSignature}`);
+  console.error(`   Amount: ${result.amount} ${result.asset}`);
+
+  return { success: true, payment: result };
+}
+
+/**
+ * Solana: show wallet binding status for a handle
+ */
+async function cmdSolanaStatus(options) {
+  const socialPath = options.socialPath || DEFAULT_SOCIAL_PATH;
+  const handle = options.handle;
+
+  if (!handle) {
+    console.error('❌ Missing --handle. Example: social solana status --handle @momo');
+    return { success: false };
+  }
+
+  const { getWalletBindingStatus } = await loadLib('solana');
+  const result = await getWalletBindingStatus({ socialPath, handle });
+
+  if (!result.exists) {
+    console.error(`⚠️  No node found for ${result.handle}`);
+    return { success: true, status: result };
+  }
+
+  console.error('✅ Wallet binding status');
+  console.error(`   Handle: ${result.handle}`);
+  console.error(`   Wallet: ${result.walletAddress || 'not bound'}`);
+  console.error(`   Verified At: ${result.walletVerifiedAt || 'n/a'}`);
+  console.error(`   trustScoreOnchain: ${result.trustScoreOnchain}`);
+
+  return { success: true, status: result };
+}
+
 /**
  * Show status
  */
@@ -764,6 +988,12 @@ Commands:
   graph centrality      Show centrality scores
   graph communities     Detect communities
   graph visualize       View the social graph
+  solana challenge      Create wallet-binding challenge
+  solana bind           Verify wallet signature and bind wallet
+  solana proof          Record proof-of-interaction
+  solana pay            Send SOL reward payment and record it
+  solana reward         Record existing reward tx (e.g. USDC transfer)
+  solana status         Show wallet binding status for a handle
   status                Show current status with metadata
 
 Options:
@@ -788,6 +1018,8 @@ Options:
 
   --clawd-path <path>   Path to clawd directory
   --social-path <path>  Path to social directory
+  --network <name>      Solana network: devnet | testnet | mainnet-beta
+  --rpc-url <url>       Custom Solana RPC endpoint
 
 Privacy Levels:
   public                Full profile visible
@@ -815,6 +1047,14 @@ Examples:
   social graph common --a @a --b @b
   social graph centrality --metric pagerank --top 10
   social graph communities --iterations 10
+
+  # Solana integration
+  social solana challenge --handle @momo --wallet <pubkey>
+  social solana bind --challenge-id <id> --signature <sig>
+  social solana proof --from @a --to @b --proof-type intro_accepted --tx <signature>
+  social solana pay --from-keypair ~/.config/solana/id.json --to-wallet <pubkey> --amount 0.1
+  social solana reward --tx <signature> --to-wallet <pubkey> --amount 25 --asset USDC
+  social solana status --handle @momo
   social status
 `);
     process.exit(command ? 0 : 1);
@@ -847,6 +1087,25 @@ Examples:
           result = await cmdGraphVisualize(options);
         } else {
           console.error(`Unknown graph command: ${subCommand}`);
+          process.exit(1);
+        }
+        break;
+      case 'solana':
+        const solanaSubCommand = positional[0];
+        if (solanaSubCommand === 'challenge') {
+          result = await cmdSolanaChallenge(options);
+        } else if (solanaSubCommand === 'bind') {
+          result = await cmdSolanaBind(options);
+        } else if (solanaSubCommand === 'proof') {
+          result = await cmdSolanaProof(options);
+        } else if (solanaSubCommand === 'pay') {
+          result = await cmdSolanaPay(options);
+        } else if (solanaSubCommand === 'reward') {
+          result = await cmdSolanaReward(options);
+        } else if (solanaSubCommand === 'status') {
+          result = await cmdSolanaStatus(options);
+        } else {
+          console.error(`Unknown solana command: ${solanaSubCommand}`);
           process.exit(1);
         }
         break;

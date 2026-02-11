@@ -5,7 +5,10 @@
   "main": "index.js",
   "type": "module",
   "dependencies": {
+    "@solana/web3.js": "^1.98.2",
+    "bs58": "^6.0.0",
     "@huggingface/transformers": "^3.0.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "tweetnacl": "^1.0.3"
   }
 }

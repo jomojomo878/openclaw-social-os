@@ -21,6 +21,9 @@ Social OS helps AI agents:
 - D3 graph visualization
 - Graph engine: neighbors, shortest path, common neighbors
 - Centrality + communities: PageRank, betweenness, label propagation
+- Solana identity binding: handle <-> wallet signature verification
+- Proof-of-interaction: hash + tx-linked proof records
+- Reward rails: SOL transfer + external tx settlement recording (USDC/SOL)
 
 ## Quick Start
 
@@ -47,6 +50,18 @@ node cli.js graph visualize
 
 # Check status
 node cli.js status
+
+# Solana identity binding (Phase 1)
+node cli.js solana challenge --handle @momo --wallet <pubkey>
+node cli.js solana bind --challenge-id <id> --signature <signature>
+node cli.js solana status --handle @momo
+
+# Solana proof-of-interaction (Phase 2)
+node cli.js solana proof --from @momo --to @alice --proof-type intro_accepted --tx <signature> --network devnet --verify-tx true
+
+# Solana reward rails (Phase 3)
+node cli.js solana pay --from-keypair ~/.config/solana/id.json --to-wallet <pubkey> --amount 0.1 --network devnet
+node cli.js solana reward --tx <signature> --to-wallet <pubkey> --amount 25 --asset USDC --network mainnet-beta
 ```
 
 ## Requirements
@@ -65,7 +80,8 @@ node cli.js status
 │   ├── daily-needs.js
 │   ├── graph-engine.js
 │   ├── metadata.js
-│   └── recommender.js
+│   ├── recommender.js
+│   └── solana.js
 ├── SKILL.md
 └── README.md
 ```

@@ -186,6 +186,164 @@ export default {
 
         return { success: false, error: 'Provide either node+hops or a+b.' };
       }
+    },
+
+    social_solana_create_challenge: {
+      description: 'Create a Solana wallet-binding challenge for a Social OS handle',
+      parameters: {
+        type: 'object',
+        properties: {
+          handle: { type: 'string' },
+          wallet_address: { type: 'string' },
+          ttl_minutes: { type: 'number' },
+          social_path: { type: 'string' }
+        },
+        required: ['handle', 'wallet_address']
+      },
+      async execute(args) {
+        const socialPath = args.social_path || DEFAULT_SOCIAL_PATH;
+        const { createWalletBindingChallenge } = await loadLib('solana');
+        const challenge = await createWalletBindingChallenge({
+          socialPath,
+          handle: args.handle,
+          walletAddress: args.wallet_address,
+          ttlMinutes: args.ttl_minutes || 10
+        });
+        return { success: true, data: challenge };
+      }
+    },
+
+    social_solana_bind_wallet: {
+      description: 'Verify signature for a challenge and bind a Solana wallet to a handle',
+      parameters: {
+        type: 'object',
+        properties: {
+          challenge_id: { type: 'string' },
+          signature: { type: 'string' },
+          handle: { type: 'string' },
+          wallet_address: { type: 'string' },
+          social_path: { type: 'string' }
+        },
+        required: ['challenge_id', 'signature']
+      },
+      async execute(args) {
+        const socialPath = args.social_path || DEFAULT_SOCIAL_PATH;
+        const { verifyWalletBinding } = await loadLib('solana');
+        const binding = await verifyWalletBinding({
+          socialPath,
+          challengeId: args.challenge_id,
+          signature: args.signature,
+          handle: args.handle,
+          walletAddress: args.wallet_address
+        });
+        return { success: true, data: binding };
+      }
+    },
+
+    social_solana_record_proof: {
+      description: 'Record proof-of-interaction with optional on-chain tx verification',
+      parameters: {
+        type: 'object',
+        properties: {
+          from: { type: 'string' },
+          to: { type: 'string' },
+          proof_type: { type: 'string' },
+          context: { type: 'string' },
+          offchain_data: {},
+          tx_signature: { type: 'string' },
+          network: { type: 'string' },
+          rpc_url: { type: 'string' },
+          verify_tx: { type: 'boolean' },
+          social_path: { type: 'string' }
+        },
+        required: ['from', 'to', 'proof_type']
+      },
+      async execute(args) {
+        const socialPath = args.social_path || DEFAULT_SOCIAL_PATH;
+        const { recordInteractionProof } = await loadLib('solana');
+        const proof = await recordInteractionProof({
+          socialPath,
+          from: args.from,
+          to: args.to,
+          proofType: args.proof_type,
+          context: args.context,
+          offchainData: args.offchain_data,
+          txSignature: args.tx_signature,
+          network: args.network || 'devnet',
+          rpcUrl: args.rpc_url,
+          verifyTx: Boolean(args.verify_tx)
+        });
+        return { success: true, data: proof };
+      }
+    },
+
+    social_solana_reward_payment: {
+      description: 'Transfer SOL reward or record an existing reward settlement transaction',
+      parameters: {
+        type: 'object',
+        properties: {
+          mode: { type: 'string', enum: ['transfer_sol', 'record_tx'] },
+          from_keypair_path: { type: 'string' },
+          from_handle: { type: 'string' },
+          to_handle: { type: 'string' },
+          from_wallet: { type: 'string' },
+          to_wallet: { type: 'string' },
+          amount: { type: 'number' },
+          asset: { type: 'string' },
+          tx_signature: { type: 'string' },
+          memo: { type: 'string' },
+          note: { type: 'string' },
+          network: { type: 'string' },
+          rpc_url: { type: 'string' },
+          verify_tx: { type: 'boolean' },
+          social_path: { type: 'string' }
+        },
+        required: ['mode', 'to_wallet', 'amount']
+      },
+      async execute(args) {
+        const socialPath = args.social_path || DEFAULT_SOCIAL_PATH;
+        const network = args.network || 'devnet';
+        const mode = args.mode || 'record_tx';
+        const { transferSolReward, recordRewardPayment } = await loadLib('solana');
+
+        if (mode === 'transfer_sol') {
+          if (!args.from_keypair_path) {
+            return { success: false, error: 'from_keypair_path is required for transfer_sol mode' };
+          }
+          const payment = await transferSolReward({
+            socialPath,
+            fromKeypairPath: args.from_keypair_path,
+            toWallet: args.to_wallet,
+            amountSol: Number(args.amount),
+            network,
+            rpcUrl: args.rpc_url,
+            memo: args.memo,
+            fromHandle: args.from_handle,
+            toHandle: args.to_handle
+          });
+          return { success: true, data: payment };
+        }
+
+        if (!args.tx_signature) {
+          return { success: false, error: 'tx_signature is required for record_tx mode' };
+        }
+
+        const payment = await recordRewardPayment({
+          socialPath,
+          fromHandle: args.from_handle,
+          toHandle: args.to_handle,
+          fromWallet: args.from_wallet || null,
+          toWallet: args.to_wallet,
+          amount: Number(args.amount),
+          asset: args.asset || 'USDC',
+          txSignature: args.tx_signature,
+          network,
+          rpcUrl: args.rpc_url,
+          note: args.note,
+          verifyTx: Boolean(args.verify_tx)
+        });
+        return { success: true, data: payment };
+      }
     }
   }
 };

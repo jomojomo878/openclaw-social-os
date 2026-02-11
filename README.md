@@ -69,6 +69,47 @@ node cli.js solana reward --tx <signature> --to-wallet <pubkey> --amount 25 --as
 - Node.js 18+
 - Moltbook API key (or use `--tools-path` to extract from TOOLS.md)
 
+## Solana Onchain Features
+
+The project now includes three production-ready Solana integration tracks:
+
+1. Identity binding:
+- Creates a signed challenge for `@handle -> wallet` ownership.
+- Verifies signatures and stores wallet trust metadata on the node.
+
+2. Proof-of-interaction:
+- Records collaboration proofs with hash integrity (`proofHash`).
+- Optionally verifies referenced transaction signatures on-chain.
+
+3. Reward rails:
+- Sends SOL directly from a local keypair and records settlement.
+- Records external settlement transactions (for USDC/SOL flows).
+
+### Solana Command Reference
+
+| Capability | Command | Output |
+|---|---|---|
+| Create challenge | `node cli.js solana challenge --handle @momo --wallet <pubkey>` | `solana-challenges.json` |
+| Bind wallet | `node cli.js solana bind --challenge-id <id> --signature <sig>` | `nodes.json` wallet fields |
+| Check wallet status | `node cli.js solana status --handle @momo` | wallet binding summary |
+| Record interaction proof | `node cli.js solana proof --from @a --to @b --proof-type intro_accepted --tx <sig>` | `proofs.json` + proof edge in `edges.json` |
+| Send SOL reward | `node cli.js solana pay --from-keypair ~/.config/solana/id.json --to-wallet <pubkey> --amount 0.1` | `payments.json` + payment edge in `edges.json` |
+| Record external settlement | `node cli.js solana reward --tx <sig> --to-wallet <pubkey> --amount 25 --asset USDC` | `payments.json` + payment edge in `edges.json` |
+
+### Data Files Written By Solana Flows
+
+- `solana-challenges.json`: issued challenges, expiry, and usage timestamps.
+- `proofs.json`: interaction proofs with hash and optional on-chain verification info.
+- `payments.json`: reward transfer records (SOL and external settlements).
+- `nodes.json`: wallet identity fields (`walletAddress`, `walletVerifiedAt`, `trustScoreOnchain`).
+- `edges.json`: additional `proof` and `payment` relationship edges.
+
+### Security Notes
+
+- Signature challenges are time-limited and single-use.
+- Local keypair-based SOL transfers should be used with dedicated hot wallets only.
+- Do not commit private key files or downloaded wallet secrets to Git.
+
 ## Project Layout
 
 ```
